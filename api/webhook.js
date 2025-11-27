@@ -1,20 +1,27 @@
+// 让 Vercel 正常处理 JSON body
 export const config = {
   api: {
-    bodyParser: true,
+    bodyParser: {
+      sizeLimit: "1mb",
+    },
   },
 };
 
-// 最基础可运行的飞书 Webhook
-export default function handler(req, res) {
-  const body = req.body || {};
+export default async function handler(req, res) {
+  try {
+    const body = req.body || {};
 
-  // 飞书 URL Challenge 验证
-  if (body.challenge) {
-    return res.status(200).json({
-      challenge: body.challenge,
-    });
+    // 1. 飞书 URL challenge 校验
+    if (body.challenge) {
+      return res.status(200).json({
+        challenge: body.challenge,
+      });
+    }
+
+    // 2. 任意事件返回 200（防止飞书超时）
+    return res.status(200).json({ code: 0, msg: "ok" });
+    
+  } catch (error) {
+    return res.status(200).json({ code: 0, msg: "ok" });
   }
-
-  // 正常响应
-  return res.status(200).send("ok");
 }
