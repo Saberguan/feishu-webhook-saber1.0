@@ -1,27 +1,41 @@
-// 让 Vercel 自动解析 JSON body
 export const config = {
   api: {
-    bodyParser: {
-      sizeLimit: "1mb",
-    },
+    bodyParser: false, // ❗先关闭 Next.js 默认 body 解析
   },
 };
 
-export default function handler(req, res) {
+export default async function handler(req, res) {
+
+  // 手动读取 raw body
+  const rawBody = await getRawBody(req);
+  let body;
+
   try {
-    const body = req.body || {};
-
-    // 🚨 飞书 challenge 校验（关键！！）
-    if (body.challenge) {
-      return res.status(200).json({
-        challenge: body.challenge,
-      });
-    }
-
-    // 其他事件正常返回 200（避免飞书报错）
-    return res.status(200).json({ code: 0, msg: "ok" });
-
-  } catch (err) {
-    return res.status(200).json({ code: 0, msg: "ok" });
+    body = JSON.parse(rawBody.toString());
+  } catch (e) {
+    return res.status(200).json({ code: 0, msg: "invalid json" });
   }
+
+  // 飞书 challenge 校验（关键！！！）
+  if (body.challenge) {
+    return res.status(200).json({
+      challenge: body.challenge,
+    });
+  }
+
+  // 其他事件
+  return res.status(200).json({ code: 0, msg: "ok" });
+}
+
+// 工具函数：读取 raw body
+function getRawBody(req) {
+  return new Promise(resolve => {
+    let data = [];
+    req.on("data", chunk => {
+      data.push(chunk);
+    });
+    req.on("end", () => {
+      resolve(Buffer.concat(data));
+    });
+  });
 }
